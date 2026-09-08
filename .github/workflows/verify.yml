@@ -21,12 +21,15 @@ jobs:
       - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
+          config: .hadolint.yaml
 
   markdownlint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.json
 
   shellcheck:
     runs-on: ubuntu-latest

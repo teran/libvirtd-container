@@ -1,0 +1,8 @@
+# Hadolint configuration.
+# DL3008: pin apt package versions — intentionally skipped: we build against
+#   Ubuntu's rolling patch versions and re-tag on release.
+# DL3059: consolidate consecutive RUN — intentionally skipped: the config
+#   writes are kept as separate, readable steps.
+ignored:
+  - DL3008
+  - DL3059
