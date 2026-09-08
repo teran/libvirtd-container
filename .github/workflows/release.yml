@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  IMAGE_NAME: libvirtd
+
+permissions:
+  contents: read
+
+jobs:
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile
+
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: articulate/actions-markdownlint@v1
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run shellcheck on entrypoint.sh
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: '.'
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - hadolint
+      - markdownlint
+      - shellcheck
+    steps:
+      - name: Define build timestamp
+        id: timestamp
+        run: echo "timestamp=$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-${{ steps.timestamp.outputs.timestamp }}
+            ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }}:latest
+          outputs: type=image,name=ghcr.io/${{ github.repository }}/${{ env.IMAGE_NAME }},annotation-index.org.opencontainers.image.description=${{ env.IMAGE_NAME }}
